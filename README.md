@@ -1,5 +1,5 @@
 # gosumtrim
-Trimer for sum.go files.
+Trimer for `go.sum` files.
 
 ## Example usage:
 

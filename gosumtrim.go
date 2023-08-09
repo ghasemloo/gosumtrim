@@ -46,31 +46,48 @@ func trim(mod io.Reader, sum io.Reader, o io.Writer) error {
 	m := bufio.NewReader(mod)
 	s := bufio.NewReader(sum)
 
-	// Read till we get to the require line.
-	for {
-		line, err := m.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("reading mod file failed: %v", err)
-		}
-		glog.Infof("line: %v", line)
-		if line == "require (\n" {
-			break
-		}
-	}
-
 	// Process require lines and add dependencies into used map.
 	used := make(map[string]bool)
+
+readLoop:
 	for {
-		line, err := m.ReadString('\n')
-		line = strings.Trim(line, "\n \t")
-		if err != nil {
-			return fmt.Errorf("reading input go.mod failed: %v", err)
+		// Read till we get to the "require (\n".
+		for {
+			line, err := m.ReadString('\n')
+			if err == io.EOF {
+				break readLoop
+			}
+			if err != nil {
+				return fmt.Errorf("reading mod file failed: %v", err)
+			}
+
+			glog.Infof("line: %v", line)
+
+			if line == "require (\n" {
+				break
+			}
 		}
-		glog.Infof("line: %v", line)
-		if line == ")" {
-			break
+
+		// Read the lines and process them until we reach ")\n".
+		for {
+			line, err := m.ReadString('\n')
+			if err == io.EOF {
+				break readLoop
+			}
+			if err != nil {
+				return fmt.Errorf("reading input go.mod failed: %v", err)
+			}
+
+			glog.Infof("line: %v", line)
+
+			if line == ")\n" {
+				break
+			}
+
+			line = strings.Trim(line, "\n \t")
+			line = strings.Split(line, " // ")[0]
+			used[line] = true
 		}
-		used[line] = true
 	}
 
 	glog.Infof("used: %v", used)
